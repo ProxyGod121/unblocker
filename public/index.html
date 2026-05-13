@@ -1,187 +1,88 @@
-\<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Web Unblocker System</title>
-        <style>
-            * {
-                box-sizing: border-box;
-            }
-            body {
-                font-family: sans-serif;
-                margin: 0;
-                padding: 20px;
-                background: #121212;
-                color: white;
-                display: flex;
-                flex-direction: column;
-                height: 100vh;
-            }
-            .container {
-                max-width: 900px;
-                margin: auto;
-                text-align: center;
-                width: 100%;
-                transition: all 0.3s ease;
-            }
-            .controls {
-                margin-bottom: 15px;
-                display: flex;
-                gap: 10px;
-                justify-content: center;
-                align-items: center;
-            }
-            input {
-                width: 50%;
-                padding: 10px;
-                border: none;
-                border-radius: 4px;
-                color: #000;
-                font-size: 16px;
-            }
-            button {
-                padding: 10px 20px;
-                border: none;
-                background: #007bff;
-                color: white;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            button.fs-btn {
-                background: #28a745;
-            }
-            button.embed-btn {
-                background: #17a2b8;
-            }
-            .iframe-container {
-                width: 100%;
-                height: 650px;
-                background: white;
-                border-radius: 8px;
-                overflow: hidden;
-                position: relative;
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            }
-            iframe {
-                width: 100%;
-                height: 100%;
-                border: none;
-            }
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Unblocker System</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #121212; color: white; display: flex; flex-direction: column; height: 100vh; }
+        .container { max-width: 900px; margin: auto; text-align: center; width: 100%; transition: all 0.3s ease; }
+        .controls { margin-bottom: 15px; display: flex; gap: 10px; justify-content: center; align-items: center; }
+        input { width: 50%; padding: 10px; border: none; border-radius: 4px; color: #000; font-size: 16px; }
+        button { padding: 10px 20px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        button.fs-btn { background: #28a745; }
+        button.embed-btn { background: #17a2b8; }
+        .iframe-container { width: 100%; height: 650px; background: white; border-radius: 8px; overflow: hidden; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        iframe { width: 100%; height: 100%; border: none; }
 
-            /* Embed / Fullscreen mode layout changes */
-            body.embed-mode {
-                padding: 0;
-                overflow: hidden;
-            }
-            body.embed-mode .container {
-                max-width: 100% !important;
-                width: 100% !important;
-                height: 100vh !important;
-                margin: 0 !important;
-            }
-            body.embed-mode .controls,
-            body.embed-mode h2 {
-                display: none !important;
-            }
-            body.embed-mode .iframe-container {
-                height: 100vh !important;
-                border-radius: 0 !important;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h2>Enter Blocked URL</h2>
-            <div class="controls">
-                <input
-                    type="text"
-                    id="urlInput"
-                    placeholder="https://example.com"
-                />
-                <button onclick="loadSite()">Unblock</button>
-                <button class="fs-btn" onclick="toggleFullscreen()">
-                    Full Screen
-                </button>
-                <button class="embed-btn" onclick="generateEmbedUrl()">
-                    Generate Embed Link
-                </button>
-            </div>
-            <div class="iframe-container">
-                <iframe id="viewFrame"></iframe>
-            </div>
+        body.embed-mode { padding: 0; overflow: hidden; }
+        body.embed-mode .container { max-width: 100% !important; width: 100% !important; height: 100vh !important; margin: 0 !important; }
+        body.embed-mode .controls, body.embed-mode h2 { display: none !important; }
+        body.embed-mode .iframe-container { height: 100vh !important; border-radius: 0 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Enter Blocked URL</h2>
+        <div class="controls">
+            <input type="text" id="urlInput" placeholder="https://example.com">
+            <button onclick="loadSite()">Unblock</button>
+            <button class="fs-btn" onclick="toggleFullscreen()">Full Screen</button>
+            <button class="embed-btn" onclick="generateEmbedUrl()">Generate Embed Link</button>
         </div>
+        <div class="iframe-container">
+            <iframe id="viewFrame"></iframe>
+        </div>
+    </div>
 
-        <script>
-            // Integrated your live Render backend URL directly
-            const backendUrl = "https://serverblockserver.onrender.com";
+    <script>
+        const backendUrl = "https://serverblockserver.onrender.com";
 
-            function loadSite() {
-                let url = document.getElementById("urlInput").value.trim();
-                if (!url) return alert("Please enter a URL");
-                if (!url.startsWith("http")) url = "https://" + url;
+        function loadSite() {
+            let url = document.getElementById('urlInput').value.trim();
+            if (!url) return alert('Please enter a URL');
+            if (!url.startsWith('http')) url = 'https://' + url;
 
-                // Update browser location history parameters cleanly without causing 404s
-                const newUrl =
-                    window.location.protocol +
-                    "//" +
-                    window.location.host +
-                    window.location.pathname +
-                    "?url=" +
-                    encodeURIComponent(url);
-                window.history.pushState({ path: newUrl }, "", newUrl);
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?url=' + encodeURIComponent(url);
+            window.history.pushState({ path: newUrl }, '', newUrl);
 
-                document.getElementById("viewFrame").src =
-                    `${backendUrl}/proxy?url=${encodeURIComponent(url)}`;
+            document.getElementById('viewFrame').src = `${backendUrl}/proxy?url=${encodeURIComponent(url)}`;
+        }
+
+        function toggleFullscreen() {
+            const iframe = document.getElementById('viewFrame');
+            if (!document.fullscreenElement) {
+                if (iframe.requestFullscreen) iframe.requestFullscreen();
+                else if (iframe.webkitRequestFullscreen) iframe.webkitRequestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        function generateEmbedUrl() {
+            let url = document.getElementById('urlInput').value.trim();
+            if (!url) return alert('Please input a target website URL first');
+            if (!url.startsWith('http')) url = 'https://' + url;
+
+            const generatedLink = `${window.location.protocol}//${window.location.host}${window.location.pathname}?url=${encodeURIComponent(url)}&embed=true`;
+            navigator.clipboard.writeText(generatedLink);
+            alert("Embed Link Copied to Clipboard:\n" + generatedLink);
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const embeddedUrl = urlParams.get('url');
+
+            if (urlParams.get('embed') === 'true') {
+                document.body.classList.add('embed-mode');
             }
 
-            function toggleFullscreen() {
-                const iframe = document.getElementById("viewFrame");
-                if (!document.fullscreenElement) {
-                    if (iframe.requestFullscreen) {
-                        iframe.requestFullscreen();
-                    } else if (iframe.webkitRequestFullscreen) {
-                        /* Safari support */
-                        iframe.webkitRequestFullscreen();
-                    }
-                } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
-                }
+            if (embeddedUrl) {
+                document.getElementById('urlInput').value = embeddedUrl;
+                document.getElementById('viewFrame').src = `${backendUrl}/proxy?url=${encodeURIComponent(embeddedUrl)}`;
             }
-
-            function generateEmbedUrl() {
-                let url = document.getElementById("urlInput").value.trim();
-                if (!url)
-                    return alert("Please input a target website URL first");
-                if (!url.startsWith("http")) url = "https://" + url;
-
-                // Generates a URL parameter string avoiding platform folder restrictions
-                const generatedLink = `${window.location.protocol}//${window.location.host}${window.location.pathname}?url=${encodeURIComponent(url)}&embed=true`;
-
-                // Copies link directly to user clipboard
-                navigator.clipboard.writeText(generatedLink);
-                alert("Embed Link Copied to Clipboard:\n" + generatedLink);
-            }
-
-            window.onload = function () {
-                const urlParams = new URLSearchParams(window.location.search);
-                const embeddedUrl = urlParams.get("url");
-
-                // If URL parameters contain embed=true, instantly apply the full-screen stylesheet changes
-                if (urlParams.get("embed") === "true") {
-                    document.body.classList.add("embed-mode");
-                }
-
-                if (embeddedUrl) {
-                    document.getElementById("urlInput").value = embeddedUrl;
-                    document.getElementById("viewFrame").src =
-                        `${backendUrl}/proxy?url=${encodeURIComponent(embeddedUrl)}`;
-                }
-            };
-        </script>
-    </body>
+        }
+    </script>
+</body>
 </html>
