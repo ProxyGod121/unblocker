@@ -1,7 +1,7 @@
 {
   "name": "web-proxy-backend",
   "version": "1.0.0",
-  "description": "Root-level proxy engine",
+  "description": "Proxy engine running inside subfolder",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

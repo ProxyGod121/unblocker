@@ -10,10 +10,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Keep-alive endpoint
 app.get('/ping', (req, res) => res.status(200).send('Server is awake'));
 
-// Main proxy endpoint
 app.get('/proxy', (req, res) => {
     const targetUrl = req.query.url;
     if (!targetUrl) return res.status(400).send('URL parameter required');
@@ -30,10 +28,8 @@ app.get('/proxy', (req, res) => {
         };
 
         const proxyReq = client.request(targetUrl, options, (proxyRes) => {
-            // Remove restrictive frame headers
             delete proxyRes.headers['x-frame-options'];
             delete proxyRes.headers['content-security-policy'];
-
             proxyRes.headers['access-control-allow-origin'] = '*';
 
             res.writeHead(proxyRes.statusCode, proxyRes.headers);

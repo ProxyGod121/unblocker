@@ -28,14 +28,12 @@
             if (!url) return alert('Please enter a URL');
             if (!url.startsWith('http')) url = 'https://' + url;
 
-            // Update user's URL parameters dynamically for easy sharing/embedding
             const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?url=' + encodeURIComponent(url);
             window.history.pushState({ path: newUrl }, '', newUrl);
 
             document.getElementById('viewFrame').src = `${backendUrl}/proxy?url=${encodeURIComponent(url)}`;
         }
 
-        // Catch incoming URL query values instantly on window boot up
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const embeddedUrl = urlParams.get('url');
