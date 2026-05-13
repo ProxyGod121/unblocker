@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Web Unblocker - Frontend</title>
+        <title>Web Unblocker - Embed System</title>
         <style>
             body {
                 font-family: sans-serif;
@@ -12,7 +12,7 @@
                 color: white;
             }
             .container {
-                max-width: 600px;
+                max-width: 800px;
                 margin: auto;
                 text-align: center;
             }
@@ -55,15 +55,38 @@
         </div>
 
         <script>
+            const backendUrl = "onrender.com";
+
             function loadSite() {
                 let url = document.getElementById("urlInput").value.trim();
                 if (!url) return alert("Please enter a URL");
                 if (!url.startsWith("http")) url = "https://" + url;
 
-                const backendUrl = "https://unblocker-eyco.onrender.com";
+                // Change the address bar URL so the page can be shared/embedded
+                const newUrl =
+                    window.location.protocol +
+                    "//" +
+                    window.location.host +
+                    window.location.pathname +
+                    "?url=" +
+                    encodeURIComponent(url);
+                window.history.pushState({ path: newUrl }, "", newUrl);
+
+                // Send to proxy
                 document.getElementById("viewFrame").src =
                     `${backendUrl}/proxy?url=${encodeURIComponent(url)}`;
             }
+
+            // Auto-embed functionality: Checks URL bar for ?url=https://something.com on load
+            window.onload = function () {
+                const urlParams = new URLSearchParams(window.location.search);
+                const embeddedUrl = urlParams.get("url");
+                if (embeddedUrl) {
+                    document.getElementById("urlInput").value = embeddedUrl;
+                    document.getElementById("viewFrame").src =
+                        `${backendUrl}/proxy?url=${encodeURIComponent(embeddedUrl)}`;
+                }
+            };
         </script>
     </body>
 </html>
