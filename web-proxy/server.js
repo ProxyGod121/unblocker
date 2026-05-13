@@ -28,6 +28,7 @@ app.get('/proxy', (req, res) => {
         };
 
         const proxyReq = client.request(targetUrl, options, (proxyRes) => {
+            // Strip structural blockades from target content securely
             delete proxyRes.headers['x-frame-options'];
             delete proxyRes.headers['content-security-policy'];
             proxyRes.headers['access-control-allow-origin'] = '*';
