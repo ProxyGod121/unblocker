@@ -1,9 +1,9 @@
-<!doctype html>
+\<!doctype html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Web Unblocker</title>
+        <title>Web Unblocker System</title>
         <style>
             * {
                 box-sizing: border-box;
@@ -33,7 +33,7 @@
                 align-items: center;
             }
             input {
-                width: 60%;
+                width: 50%;
                 padding: 10px;
                 border: none;
                 border-radius: 4px;
@@ -53,6 +53,9 @@
             button.fs-btn {
                 background: #28a745;
             }
+            button.embed-btn {
+                background: #17a2b8;
+            }
             .iframe-container {
                 width: 100%;
                 height: 650px;
@@ -68,7 +71,7 @@
                 border: none;
             }
 
-            /* Embed/Fullscren mode Layout Override */
+            /* Embed / Fullscreen mode layout changes */
             body.embed-mode {
                 padding: 0;
                 overflow: hidden;
@@ -90,7 +93,7 @@
         </style>
     </head>
     <body>
-        <div class="container" id="mainContainer">
+        <div class="container">
             <h2>Enter Blocked URL</h2>
             <div class="controls">
                 <input
@@ -102,6 +105,9 @@
                 <button class="fs-btn" onclick="toggleFullscreen()">
                     Full Screen
                 </button>
+                <button class="embed-btn" onclick="generateEmbedUrl()">
+                    Generate Embed Link
+                </button>
             </div>
             <div class="iframe-container">
                 <iframe id="viewFrame"></iframe>
@@ -109,20 +115,22 @@
         </div>
 
         <script>
-            const backendUrl = "https://serverblockserver.onrender.com";
+            // Integrated your live Render backend URL directly
+            const backendUrl = "onrender.com";
 
             function loadSite() {
                 let url = document.getElementById("urlInput").value.trim();
                 if (!url) return alert("Please enter a URL");
                 if (!url.startsWith("http")) url = "https://" + url;
 
-                // Generate regular routing URL tracking parameters
-                const isEmbedPath = window.location.pathname.endsWith("/embed");
-                const basePath = isEmbedPath
-                    ? window.location.pathname
-                    : window.location.pathname.replace(/\/$/, "") + "";
-
-                const newUrl = `${window.location.protocol}//${window.location.host}${basePath}?url=${encodeURIComponent(url)}`;
+                // Update browser location history parameters cleanly without causing 404s
+                const newUrl =
+                    window.location.protocol +
+                    "//" +
+                    window.location.host +
+                    window.location.pathname +
+                    "?url=" +
+                    encodeURIComponent(url);
                 window.history.pushState({ path: newUrl }, "", newUrl);
 
                 document.getElementById("viewFrame").src =
@@ -130,14 +138,12 @@
             }
 
             function toggleFullscreen() {
-                const container = document.getElementById("iframe-container");
                 const iframe = document.getElementById("viewFrame");
-
                 if (!document.fullscreenElement) {
                     if (iframe.requestFullscreen) {
                         iframe.requestFullscreen();
                     } else if (iframe.webkitRequestFullscreen) {
-                        /* Safari */
+                        /* Safari support */
                         iframe.webkitRequestFullscreen();
                     }
                 } else {
@@ -147,13 +153,26 @@
                 }
             }
 
-            // Routing processing loop handles clean view loading configs
+            function generateEmbedUrl() {
+                let url = document.getElementById("urlInput").value.trim();
+                if (!url)
+                    return alert("Please input a target website URL first");
+                if (!url.startsWith("http")) url = "https://" + url;
+
+                // Generates a URL parameter string avoiding platform folder restrictions
+                const generatedLink = `${window.location.protocol}//${window.location.host}${window.location.pathname}?url=${encodeURIComponent(url)}&embed=true`;
+
+                // Copies link directly to user clipboard
+                navigator.clipboard.writeText(generatedLink);
+                alert("Embed Link Copied to Clipboard:\n" + generatedLink);
+            }
+
             window.onload = function () {
                 const urlParams = new URLSearchParams(window.location.search);
                 const embeddedUrl = urlParams.get("url");
 
-                // Check if user is navigating specifically to the /embed URL route
-                if (window.location.pathname.endsWith("/embed")) {
+                // If URL parameters contain embed=true, instantly apply the full-screen stylesheet changes
+                if (urlParams.get("embed") === "true") {
                     document.body.classList.add("embed-mode");
                 }
 
