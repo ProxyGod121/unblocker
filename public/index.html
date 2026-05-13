@@ -1,92 +1,49 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Web Unblocker - Embed System</title>
-        <style>
-            body {
-                font-family: sans-serif;
-                margin: 40px;
-                background: #121212;
-                color: white;
-            }
-            .container {
-                max-width: 800px;
-                margin: auto;
-                text-align: center;
-            }
-            input {
-                width: 70%;
-                padding: 10px;
-                border: none;
-                border-radius: 4px;
-                color: #000;
-                font-size: 16px;
-            }
-            button {
-                padding: 10px 20px;
-                border: none;
-                background: #007bff;
-                color: white;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 16px;
-            }
-            iframe {
-                width: 100%;
-                height: 600px;
-                margin-top: 20px;
-                background: white;
-                border: none;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h2>Enter Blocked URL</h2>
-            <input
-                type="text"
-                id="urlInput"
-                placeholder="https://example.com"
-            />
-            <button onclick="loadSite()">Unblock</button>
-            <iframe id="viewFrame"></iframe>
-        </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Unblocker</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; background: #121212; color: white; }
+        .container { max-width: 800px; margin: auto; text-align: center; }
+        input { width: 70%; padding: 10px; border: none; border-radius: 4px; color: #000; font-size: 16px; }
+        button { padding: 10px 20px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        iframe { width: 100%; height: 600px; margin-top: 20px; background: white; border: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Enter Blocked URL</h2>
+        <input type="text" id="urlInput" placeholder="https://example.com">
+        <button onclick="loadSite()">Unblock</button>
+        <iframe id="viewFrame"></iframe>
+    </div>
 
-        <script>
-            const backendUrl = "onrender.com";
+    <script>
+        const backendUrl = "onrender.com";
 
-            function loadSite() {
-                let url = document.getElementById("urlInput").value.trim();
-                if (!url) return alert("Please enter a URL");
-                if (!url.startsWith("http")) url = "https://" + url;
+        function loadSite() {
+            let url = document.getElementById('urlInput').value.trim();
+            if (!url) return alert('Please enter a URL');
+            if (!url.startsWith('http')) url = 'https://' + url;
 
-                // Change the address bar URL so the page can be shared/embedded
-                const newUrl =
-                    window.location.protocol +
-                    "//" +
-                    window.location.host +
-                    window.location.pathname +
-                    "?url=" +
-                    encodeURIComponent(url);
-                window.history.pushState({ path: newUrl }, "", newUrl);
+            // Update user's URL parameters dynamically for easy sharing/embedding
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?url=' + encodeURIComponent(url);
+            window.history.pushState({ path: newUrl }, '', newUrl);
 
-                // Send to proxy
-                document.getElementById("viewFrame").src =
-                    `${backendUrl}/proxy?url=${encodeURIComponent(url)}`;
+            document.getElementById('viewFrame').src = `${backendUrl}/proxy?url=${encodeURIComponent(url)}`;
+        }
+
+        // Catch incoming URL query values instantly on window boot up
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const embeddedUrl = urlParams.get('url');
+            if (embeddedUrl) {
+                document.getElementById('urlInput').value = embeddedUrl;
+                document.getElementById('viewFrame').src = `${backendUrl}/proxy?url=${encodeURIComponent(embeddedUrl)}`;
             }
-
-            // Auto-embed functionality: Checks URL bar for ?url=https://something.com on load
-            window.onload = function () {
-                const urlParams = new URLSearchParams(window.location.search);
-                const embeddedUrl = urlParams.get("url");
-                if (embeddedUrl) {
-                    document.getElementById("urlInput").value = embeddedUrl;
-                    document.getElementById("viewFrame").src =
-                        `${backendUrl}/proxy?url=${encodeURIComponent(embeddedUrl)}`;
-                }
-            };
-        </script>
-    </body>
+        }
+    </script>
+</body>
 </html>
