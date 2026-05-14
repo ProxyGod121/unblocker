@@ -1,11 +1,13 @@
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
+const path = require('path');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/ping', (req, res) => res.status(200).send('Server is awake'));
 
@@ -17,77 +19,119 @@ app.get('/proxy', async (req, res) => {
         const response = await axios.get(targetUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.5'
+                'Accept': '*/*',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Accept-Encoding': 'identity'
             },
-            responseType: 'text',
-            validateStatus: () => true
+            responseType: 'arraybuffer',
+            validateStatus: () => true,
+            maxRedirects: 5
         });
 
-        // Strip cross-origin frame limitations
-        res.removeHeader('x-frame-options');
-        res.removeHeader('content-security-policy');
-        res.set('Access-Control-Allow-Origin', '*');
-
-        let html = response.data;
+        const contentType = (response.headers['content-type'] || '').toLowerCase();
         const origin = new URL(targetUrl).origin;
         const currentProxyBase = `${req.protocol}://${req.get('host')}/proxy?url=`;
 
-        // Step 1: Clean up relative paths to absolute paths
-        html = html.replace(/(src|href)=\"\/(?!\/)/g, `$1="${origin}/`);
-        html = html.replace(/(src|href)=\'\/(?!\/)/g, `$1='${origin}/`);
-        html = html.replace(/(src|href)=\"\/\//g, `$1="https://`);
-        html = html.replace(/(src|href)=\'\/\//g, `$1='https://`);
+        res.removeHeader('x-frame-options');
+        res.removeHeader('content-security-policy');
+        res.removeHeader('content-security-policy-report-only');
 
-        // Step 2: Route all links, styles, forms, and scripts through the proxy engine
-        html = html.replace(/href=\"(https?:\/\/[^\"]+)\"/g, (m, link) => {
-            if (link.includes('.css') || !link.includes(req.get('host'))) {
-                return `href="${currentProxyBase}${encodeURIComponent(link)}"`;
-            }
-            return m;
-        });
-        html = html.replace(/src=\"(https?:\/\/[^\"]+)\"/g, (m, link) => `src="${currentProxyBase}${encodeURIComponent(link)}"`);
-        html = html.replace(/action=\"(https?:\/\/[^\"]+)\"/g, (m, link) => `action="${currentProxyBase}${encodeURIComponent(link)}"`);
+        if (response.headers['content-type']) res.set('Content-Type', response.headers['content-type']);
+        res.set('Access-Control-Allow-Origin', '*');
 
-        // Step 3: Rewrite asset references locked within CSS code blocks
-        html = html.replace(/url\(['"]?\/([^\'")]+)['"]?\)/g, `url(${origin}/$1)`);
+        const isHtml = contentType.includes('text/html');
+        const isCss = contentType.includes('text/css') || /\.css(\?|$)/.test(targetUrl);
+        const isJs = contentType.includes('javascript') || /\.js(\?|$)/.test(targetUrl);
+        const isText = isHtml || isCss || isJs || contentType.startsWith('text/') || contentType.includes('json') || contentType.includes('xml');
 
-        // Step 4: Inject Javascript Sandbox routine to handle AJAX/Fetch and dynamic links
-        const injectionScript = `
-        <script>
-            const proxyBase = "${currentProxyBase}";
+        if (!isText) {
+            return res.send(Buffer.from(response.data));
+        }
 
-            // Override global fetch rules to force assets through the proxy network
-            const originalFetch = window.fetch;
-            window.fetch = async function(input, init) {
-                if (typeof input === 'string' && input.startsWith('http')) {
-                    input = proxyBase + encodeURIComponent(input);
+        let content = Buffer.from(response.data).toString('utf-8');
+
+        if (isCss) {
+            content = content.replace(/url\(\s*['"]?\/\/([^'")\s]+)['"]?\s*\)/g, (m, u) => `url(${currentProxyBase}${encodeURIComponent('https://' + u)})`);
+            content = content.replace(/url\(\s*['"]?\/([^'")\s]+)['"]?\s*\)/g, (m, u) => `url(${currentProxyBase}${encodeURIComponent(origin + '/' + u)})`);
+            content = content.replace(/url\(\s*['"]?(https?:\/\/[^'")\s]+)['"]?\s*\)/g, (m, u) => `url(${currentProxyBase}${encodeURIComponent(u)})`);
+            content = content.replace(/@import\s+url\(\s*['"]?([^'")\s]+)['"]?\s*\)/g, (m, u) => {
+                if (u.startsWith('http')) return `@import url(${currentProxyBase}${encodeURIComponent(u)})`;
+                if (u.startsWith('//')) return `@import url(${currentProxyBase}${encodeURIComponent('https:' + u)})`;
+                if (u.startsWith('/')) return `@import url(${currentProxyBase}${encodeURIComponent(origin + u)})`;
+                return m;
+            });
+            content = content.replace(/@import\s+['"]([^'"]+)['"]/g, (m, u) => {
+                if (u.startsWith('http')) return `@import '${currentProxyBase}${encodeURIComponent(u)}'`;
+                if (u.startsWith('//')) return `@import '${currentProxyBase}${encodeURIComponent('https:' + u)}'`;
+                if (u.startsWith('/')) return `@import '${currentProxyBase}${encodeURIComponent(origin + u)}'`;
+                return m;
+            });
+            return res.send(content);
+        }
+
+        if (!isHtml) {
+            return res.send(content);
+        }
+
+        content = content.replace(/(src|href|action)=(["'])\/\/([^"'\s>]+)\2/g, (m, attr, q, u) => `${attr}=${q}${currentProxyBase}${encodeURIComponent('https://' + u)}${q}`);
+        content = content.replace(/(src|href|action)=(["'])\/([^"'\s>][^"'\s>]*)\2/g, (m, attr, q, u) => `${attr}=${q}${currentProxyBase}${encodeURIComponent(origin + '/' + u)}${q}`);
+        content = content.replace(/(src|href|action)=(["'])(https?:\/\/[^"'\s>]+)\2/g, (m, attr, q, u) => `${attr}=${q}${currentProxyBase}${encodeURIComponent(u)}${q}`);
+
+        content = content.replace(/url\(\s*['"]?\/\/([^'")\s]+)['"]?\s*\)/g, (m, u) => `url(${currentProxyBase}${encodeURIComponent('https://' + u)})`);
+        content = content.replace(/url\(\s*['"]?\/([^'")\s]+)['"]?\s*\)/g, (m, u) => `url(${currentProxyBase}${encodeURIComponent(origin + '/' + u)})`);
+        content = content.replace(/url\(\s*['"]?(https?:\/\/[^'")\s]+)['"]?\s*\)/g, (m, u) => `url(${currentProxyBase}${encodeURIComponent(u)})`);
+
+        const injectionScript = `<script>
+            (function() {
+                const proxyBase = "${currentProxyBase}";
+                const originBase = "${origin}";
+
+                function rewrite(url) {
+                    if (!url || url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('javascript:')) return url;
+                    if (url.startsWith('//')) url = 'https:' + url;
+                    if (url.startsWith('/')) url = originBase + url;
+                    if (url.startsWith('http') && !url.startsWith(location.origin)) return proxyBase + encodeURIComponent(url);
+                    return url;
                 }
-                return originalFetch(input, init);
-            };
 
-            // Hijack dynamically created window views and links
-            const originalWindowOpen = window.open;
-            window.open = function(url, name, specs) {
-                if (url && !url.startsWith('http')) {
-                    url = new URL(url, "${origin}").href;
-                }
-                if (url) url = proxyBase + encodeURIComponent(url);
-                return originalWindowOpen(url, name, specs);
-            };
+                const origFetch = window.fetch;
+                window.fetch = function(input, init) {
+                    if (typeof input === 'string') input = rewrite(input);
+                    return origFetch.call(this, input, init);
+                };
 
-            document.addEventListener('click', function(e) {
-                let target = e.target.closest('a');
-                if (target && target.href && !target.href.includes(proxyBase) && target.href.startsWith('http')) {
-                    target.href = proxyBase + encodeURIComponent(target.href);
-                }
-            }, true);
-        </script>
-        `;
+                const origOpen = XMLHttpRequest.prototype.open;
+                XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+                    return origOpen.call(this, method, rewrite(url), ...rest);
+                };
 
-        html = html.replace('<head>', `<head>${injectionScript}`);
+                const origWindowOpen = window.open;
+                window.open = function(url, name, specs) {
+                    return origWindowOpen.call(this, rewrite(url), name, specs);
+                };
 
-        res.send(html);
+                document.addEventListener('click', function(e) {
+                    const a = e.target.closest('a');
+                    if (a && a.href && !a.href.includes(proxyBase) && (a.href.startsWith('http') || a.href.startsWith('//'))) {
+                        e.preventDefault();
+                        location.href = proxyBase + encodeURIComponent(a.href);
+                    }
+                }, true);
+
+                const origPushState = history.pushState;
+                history.pushState = function(state, title, url) {
+                    return origPushState.call(this, state, title, rewrite(url) || url);
+                };
+            })();
+        </script>`;
+
+        if (content.includes('<head>')) {
+            content = content.replace('<head>', `<head>${injectionScript}`);
+        } else {
+            content = injectionScript + content;
+        }
+
+        res.send(content);
     } catch (e) {
         res.status(500).send('Proxy Routing Failure: ' + e.message);
     }
